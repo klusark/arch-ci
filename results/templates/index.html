@@ -1,0 +1,26 @@
+{% if results %}
+    <table>
+	<tr>
+	<th>Repo</th>
+	<th>Name</th>
+	<th>Status</th>
+	<th>Bug ID</th>
+	<th>Jenkins</th>
+	<th>Load Flag</th>
+	<th>Load Bug</th>
+	</tr>
+    {% for r in results %}
+		<tr>
+		<td>{{r.repo}}</td>
+        <td><a href="/results/{{ r.repo }}/{{r.package}}/">{{ r.package }}</a></td>
+		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status}}</span></td>
+		<td>{{r.bug_id | lower2}}</td>
+		<td><a href="http://162.243.149.218:8090/job/package/{{r.jenkins_id}}/console">Jenkins</a></td>
+		<td><a href="/results/{{r.repo}}/{{r.package}}/load/">Load Flag</a></td>
+		<td><a href="/results/{{r.repo}}/{{r.package}}/load_bug/">Load Bug</a></td>
+		</tr>
+    {% endfor %}
+    </table>
+{% else %}
+    <p>No polls are available.</p>
+{% endif %}
