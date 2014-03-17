@@ -8,6 +8,7 @@
 	<th>Jenkins</th>
 	<th>Load Flag</th>
 	<th>Load Bug</th>
+	<th>Arch SVN</th>
 	</tr>
     {% for r in results %}
 		<tr>
@@ -18,6 +19,7 @@
 		<td><a href="http://162.243.149.218:8090/job/package/{{r.jenkins_id}}/console">Jenkins</a></td>
 		<td><a href="/results/{{r.repo}}/{{r.package}}/load/">Load Flag</a></td>
 		<td><a href="/results/{{r.repo}}/{{r.package}}/load_bug/">Load Bug</a></td>
+		<td><a href="https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
 		</tr>
     {% endfor %}
     </table>

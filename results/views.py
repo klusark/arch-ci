@@ -6,11 +6,15 @@ from django import forms
 import json
 import urllib.request
 import urllib.parse
+import urllib.error
 import re
-
-from results.models import Result
-
+import zipfile
+import os
+import io
+from results.models import Result, Build
+from django.db.models import Avg
 from django.template.loader import add_to_builtins
+from datetime import datetime
 
 add_to_builtins('results.tags')
 
@@ -26,7 +30,15 @@ def submit(request):
 		return HttpResponse("")
 	r.jenkins_id = jenkins_id
 	r.status = status
+	r.last_built = datetime.now()
 	r.save()
+	if int(status) != 2:
+		b = Build()
+		b.package = r
+		b.length = request.POST['time'];
+		b.jenkins_id = request.POST['jenkins_id']
+		b.status = status
+		b.save()
 	return HttpResponse("")
 
 @csrf_exempt
@@ -44,13 +56,18 @@ def add(request):
 
 def load(request, repo, package):
 	r = Result.objects.get(package=package, repo=repo)
-	response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo+"/"+"x86_64"+"/"+r.package+"/json/")
+	response = None
+	try:
+		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo+"/"+"x86_64"+"/"+r.package+"/json/")
+	except:
+		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo+"/"+"any"+"/"+r.package+"/json/")
 	res = response.read().decode("utf-8")
 	data = json.loads(res)
 	if data['flag_date'] != None:
 		r.flagged = True
 		r.save()
-	return HttpResponseRedirect('/results/');
+		return HttpResponse('flag');
+	return HttpResponse('no flag');
 
 def loadBug(request, repo, package):
 	r = Result.objects.get(package=package, repo=repo)
@@ -84,11 +101,16 @@ def rebuildFailed(request):
 	objs = filterObjs(request.GET)
 	for r in objs:
 		buildPackage(r.repo, r.package)
-	return HttpResponseRedirect('/results/');
+	return HttpResponse("OK\n");
 
 def filterObjs(GET):
 	objs = Result.objects.all();
 
+	if ('order_by' in GET):
+		objs = objs.order_by(GET['order_by'])
+
+	if 'avg' in GET:
+		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=1).order_by("a")
 	if ('repo' in GET):
 		objs = objs.filter(repo = GET['repo'])
 	if ('bug_id' in GET):
@@ -99,6 +121,9 @@ def filterObjs(GET):
 		objs = objs.filter(status = GET['status'])
 	if ('flag' in GET):
 		objs = objs.filter(flagged = GET['flag'])
+	if 'limit' in GET:
+		objs = objs[:int(GET['limit'])]
+
 	return objs
 
 class IndexView(generic.ListView):
@@ -126,4 +151,31 @@ def edit(request, repo, package):
 
 def PackageView(request, repo, package):
 	r = Result.objects.get(package=package, repo=repo)
-	return render(request, 'package.html', {'r': r})
+	build = Build.objects.all()
+	build = build.filter(package=r)
+	l = build.aggregate(Avg('length'))
+	return render(request, 'package.html', {'r': r, 'avg': l['length__avg']})
+
+def download(request, repo, package):
+	dir = "/var/abs/"+repo+"/"+package+"/"
+	svn = "packages"
+	if (repo == 'community'):
+		svn = "community"
+	dir2 = "/var/svn/%s/%s/trunk/" % (svn, package)
+
+	if os.path.exists(dir2):
+		dir = dir2
+
+	s = io.BytesIO()
+	zf = zipfile.ZipFile(s, "w")
+	output = ""
+	for root, dirs, files in os.walk(dir):
+		for file in files:
+			zip_path = os.path.join(package, file)
+			zf.write(dir + file, zip_path)
+			output += file
+
+	zf.close()
+	resp = HttpResponse(s.getvalue(), mimetype = "application/x-zip-compressed")
+	resp['Content-Disposition'] = 'attachment; filename=%s.zip' % package
+	return resp

@@ -5,4 +5,5 @@
 <a href="/results/{{r.repo}}/{{r.package}}/load/">Load</a><br>
 <a href="https://www.archlinux.org/packages/{{r.repo}}/{% if a.arch %}{{r.arch}} {% else %}x86_64{%endif%}/{{r.package}}/">Arch Package</a><br>
 Build status: {{ r.status }} <br>
-Bug ID: {{ r.bug_id}}
+Bug ID: {{ r.bug_id}}<br>
+Average Build Time: {{avg}}
