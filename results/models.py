@@ -7,8 +7,10 @@ class Result(models.Model):
 	status = models.IntegerField(default=0)
 	last_built = models.DateTimeField(auto_now_add = True)
 	bug_id = models.IntegerField(default=0)
-	flagged = models.BooleanField()
+	flagged = models.BooleanField(default=False)
 	arch = models.CharField(max_length=200)
+	check = models.BooleanField(default=False)
+	source = models.BooleanField(default=False)
 
 class Build(models.Model):
 	package = models.ForeignKey('Result')
