@@ -11,6 +11,7 @@ import re
 import zipfile
 import os
 import io
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from results.models import Result, Build
 from django.db.models import Avg
 from django.template.loader import add_to_builtins
@@ -121,7 +122,6 @@ def rebuildFailed(request):
 
 def filterObjs(GET):
 	objs = Result.objects.all();
-
 	if ('order_by' in GET):
 		objs = objs.order_by(GET['order_by'])
 
@@ -143,6 +143,15 @@ def filterObjs(GET):
 		objs = objs.filter(check = GET['check'])
 	if 'limit' in GET:
 		objs = objs[:int(GET['limit'])]
+
+	paginator = Paginator(objs, 50)
+	page = GET.get('page')
+	try:
+		objs = paginator.page(page)
+	except PageNotAnInteger:
+		objs = paginator.page(1)
+	except EmptyPage:
+		objs = paginator.page(paginator.num_pages)
 
 	return objs
 
