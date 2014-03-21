@@ -83,8 +83,11 @@ def load(request, repo, package):
 	if data['flag_date'] != None:
 		r.flagged = True
 		r.save()
-		return HttpResponse('flag');
-	return HttpResponse('no flag');
+		return HttpResponse('flag')
+	else:
+		r.flagged = False
+		r.save()
+		return HttpResponse('no flag')
 
 def loadBug(request, repo, package):
 	r = Result.objects.get(package=package, repo=repo)
@@ -191,7 +194,7 @@ def download(request, repo, package):
 	svn = "packages"
 	if (repo == 'community'):
 		svn = "community"
-	dir2 = "/var/svn/%s/%s/trunk/" % (svn, package)
+	dir2 = "/var/git/%s/%s/trunk/" % (svn, package)
 
 	if os.path.exists(dir2):
 		dir = dir2
