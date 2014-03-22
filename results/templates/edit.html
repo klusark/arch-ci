@@ -1,4 +1,4 @@
-<form action="{% url 'edit' r.repo r.package %}" method="post">
+<form action="{% url 'edit' r.repo.name r.package %}" method="post">
 {% csrf_token %}
 {{ form.as_p }}
 <input type="submit" value="Submit" />

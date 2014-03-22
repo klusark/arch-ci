@@ -27,7 +27,7 @@ def submit(request):
 	jenkins_id = request.POST['jenkins_id']
 	status = request.POST['status']
 	try:
-		r = Result.objects.get(package=package, repo=repo)
+		r = Result.objects.get(package=package, repo__name=repo)
 	except Result.DoesNotExist:
 		return HttpResponse("")
 	r.jenkins_id = jenkins_id
@@ -50,7 +50,7 @@ def add(request):
 	package = request.POST['package']
 	repo = request.POST['repo']
 	try:
-		r = Result.objects.get(package=package, repo=repo)
+		r = Result.objects.get(package=package, repo__name=repo)
 	except Result.DoesNotExist:
 		r = Result(package=package, repo=repo)
 		r.status = -1
@@ -72,12 +72,12 @@ def detectFailure(r):
 
 
 def load(request, repo, package):
-	r = Result.objects.get(package=package, repo=repo)
+	r = Result.objects.get(package=package, repo__name=repo)
 	response = None
 	try:
-		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo+"/"+"x86_64"+"/"+r.package+"/json/")
+		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo.name+"/"+"x86_64"+"/"+r.package+"/json/")
 	except:
-		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo+"/"+"any"+"/"+r.package+"/json/")
+		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo.name+"/"+"any"+"/"+r.package+"/json/")
 	res = response.read().decode("utf-8")
 	data = json.loads(res)
 	if data['flag_date'] != None:
@@ -90,7 +90,7 @@ def load(request, repo, package):
 		return HttpResponse('no flag')
 
 def loadBug(request, repo, package):
-	r = Result.objects.get(package=package, repo=repo)
+	r = Result.objects.get(package=package, repo__name=repo)
 	project = 0
 	if repo == "community":
 		project = 5
@@ -131,7 +131,7 @@ def filterObjs(GET):
 	if 'avg' in GET:
 		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=1).order_by("a")
 	if ('repo' in GET):
-		objs = objs.filter(repo = GET['repo'])
+		objs = objs.filter(repo__name = GET['repo'])
 	if ('bug_id' in GET):
 		objs = objs.filter(bug_id = GET['bug_id'])
 	if ('package' in GET):
@@ -172,29 +172,27 @@ class EditForm(ModelForm):
 		fields = ['bug_id', 'flagged', 'source', 'check']
 
 def edit(request, repo, package):
-	r = Result.objects.get(package=package, repo=repo)
+	r = Result.objects.get(package=package, repo__name=repo)
 	if (request.method == 'POST'):
 		form = EditForm(request.POST, instance=r)
 		if form.is_valid():
 			form.save()
-			return HttpResponseRedirect('/results/' + repo +"/" + package);
+			return HttpResponseRedirect('/results/' + r.repo.name +"/" + package);
 	else:
 		form = EditForm(instance=r)
 	return render(request, 'edit.html', {'r': r, 'form': form})
 
 def PackageView(request, repo, package):
-	r = Result.objects.get(package=package, repo=repo)
+	r = Result.objects.get(package=package, repo__name=repo)
 	build = Build.objects.all()
 	build = build.filter(package=r)
 	l = build.aggregate(Avg('length'))
 	return render(request, 'package.html', {'r': r, 'avg': l['length__avg']})
 
 def download(request, repo, package):
-	dir = "/var/abs/"+repo+"/"+package+"/"
-	svn = "packages"
-	if (repo == 'community'):
-		svn = "community"
-	dir2 = "/var/git/%s/%s/trunk/" % (svn, package)
+	r = Result.objects.get(package=package, repo__name=repo)
+	dir = "/var/abs/"+r.repo.name+"/"+package+"/"
+	dir2 = "/var/git/%s/%s/trunk/" % (r.repo.svn_path, package)
 
 	if os.path.exists(dir2):
 		dir = dir2

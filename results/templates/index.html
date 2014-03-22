@@ -1,3 +1,25 @@
+<div id="pkglist-search" class="box filter-criteria">
+
+    <form id="pkg-search" method="get" action="/packages/">
+        <p>{{ search_form.sort }}</p>
+        {{ search_form.non_field_errors }}
+        <fieldset>
+            <legend>Enter search criteria</legend>
+            <div>{{ search_form.repo.errors }}
+                <label for="id_repo" title="Limit results to a specific respository">
+                    Repository</label>{{ search_form.repo }}</div>
+            <div>{{ search_form.q.errors }}
+                <label for="id_q" title="Enter keywords as desired">
+                    Keywords</label>{{ search_form.q }}</div>
+            <div>{{ search_form.flagged.errors }}
+                <label for="id_flagged" title="Limit results based on out-of-date status">
+                    Flagged</label>{{ search_form.flagged }}</div>
+            <div ><label>&nbsp;</label><input title="Search for packages using this criteria"
+                type="submit" value="Search" /></div>
+        </fieldset>
+    </form>
+
+</div><!-- #pkglist-search -->
 {% if results %}
     <table>
 	<tr>
@@ -12,13 +34,13 @@
 	</tr>
     {% for r in results %}
 		<tr>
-		<td>{{r.repo}}</td>
-        <td><a href="/results/{{ r.repo }}/{{r.package}}/">{{ r.package }}</a></td>
+		<td>{{r.repo.name}}</td>
+        <td><a href="/results/{{ r.repo.name }}/{{r.package}}/">{{ r.package }}</a></td>
 		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status}}</span></td>
-		<td>{{r.bug_id | lower2}}</td>
+		<td>{{r.bug_id | link_bug}}</td>
 		<td><a href="http://162.243.149.218:8090/job/package/{{r.jenkins_id}}/console">Jenkins</a></td>
-		<td><a href="/results/{{r.repo}}/{{r.package}}/load/">Load Flag</a></td>
-		<td><a href="/results/{{r.repo}}/{{r.package}}/load_bug/">Load Bug</a></td>
+		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load/">Load Flag</a></td>
+		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load_bug/">Load Bug</a></td>
 		<td><a href="https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
 		</tr>
     {% endfor %}
