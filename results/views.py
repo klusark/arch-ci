@@ -12,13 +12,34 @@ import zipfile
 import os
 import io
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from results.models import Result, Build
+from results.models import Result, Build, Repo
 from django.db.models import Avg
 from django.template.loader import add_to_builtins
 from datetime import datetime
 from django.forms import ModelForm
 
 add_to_builtins('results.tags')
+
+make_choice = lambda l: [(str(m), str(m)) for m in l]
+
+class PackageSearchForm(forms.Form):
+	repo = forms.MultipleChoiceField(required=False)
+	arch = forms.MultipleChoiceField(required=False)
+	name = forms.CharField(required=False)
+	desc = forms.CharField(required=False)
+	q = forms.CharField(required=False)
+	sort = forms.CharField(required=False, widget=forms.HiddenInput())
+	maintainer = forms.ChoiceField(required=False)
+	packager = forms.ChoiceField(required=False)
+	flagged = forms.ChoiceField(
+		choices=[('', 'All')] + make_choice(['Flagged', 'Not Flagged']),
+		required=False)
+
+	def __init__(self, *args, **kwargs):
+		super(PackageSearchForm, self).__init__(*args, **kwargs)
+		repos = Repo.objects.all()
+		self.fields['repo'].choices = make_choice(
+		[repo.name for repo in repos])
 
 @csrf_exempt
 def submit(request):
@@ -120,7 +141,7 @@ def rebuild(request, repo, package):
 def rebuildFailed(request):
 	objs = filterObjs(request.GET)
 	for r in objs:
-		buildPackage(r.repo, r.package)
+		buildPackage(r.repo.name, r.package)
 	return HttpResponse("OK\n");
 
 def filterObjs(GET):
@@ -162,9 +183,18 @@ class IndexView(generic.ListView):
 	template_name = 'index.html'
 	context_object_name = 'results'
 
+	def get(self, request, *args, **kwargs):
+		self.form = PackageSearchForm()
+		return super(IndexView, self).get(request, *args, **kwargs)
+
 	def get_queryset(self):
 
 		return filterObjs(self.request.GET)
+
+	def get_context_data(self, **kwargs):
+		context = super(IndexView, self).get_context_data(**kwargs)
+		context['search_form'] = self.form
+		return context
 
 class EditForm(ModelForm):
 	class Meta:
