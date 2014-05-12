@@ -31,6 +31,8 @@
 	<th>Load Flag</th>
 	<th>Load Bug</th>
 	<th>Arch SVN</th>
+	<th>Arch PKG</th>
+	<th>Rebuild</th>
 	</tr>
     {% for r in results %}
 		<tr>
@@ -42,6 +44,8 @@
 		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load/">Load Flag</a></td>
 		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load_bug/">Load Bug</a></td>
 		<td><a href="https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
+		<td><a href="https://www.archlinux.org/packages/{{r.repo.name}}/x86_64/{{r.package}}">Arch PKG</a></td>
+		<td><a href="/results/{{r.repo.name}}/{{r.package}}/rebuild/">Rebuild</a></td>
 		</tr>
     {% endfor %}
     </table>
