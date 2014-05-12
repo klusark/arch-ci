@@ -9,6 +9,7 @@ package_patterns = patterns('',
 	url(r'^edit/$', views.edit, name='edit'),
 	url(r'^rebuild/$', views.rebuild, name='rebuild'),
 	url(r'^download/$', views.download, name='download'),
+	url(r'^detect/$', views.detect, name='detect'),
 	url(r'^$', views.PackageView, name='package'),
 )
 

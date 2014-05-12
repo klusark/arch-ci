@@ -80,17 +80,22 @@ def add(request):
 
 	return HttpResponse("")
 
+def detect(request, repo, package):
+	r = Result.objects.get(package=package, repo__name=repo)
+	detectFailure(r)
+
+	return HttpResponse("")
+
 def detectFailure(r):
 	response = urllib.request.urlopen("http://162.243.149.218:8090/job/package/"+str(r.jenkins_id)+"/consoleText")
 	res = response.read().decode("utf-8")
-	r.check = False
-	r.source = False
 	if (res.find("A failure occurred in check") != -1):
-		r.check = True
+		r.reason = 1
 	#if (res.find("A failure occurred in build") != -1):
 	#	r.build = True
 	if (res.find("Could not download sources") != -1):
-		r.source = True
+		r.reason = 2
+	r.save()
 
 
 def load(request, repo, package):
@@ -173,10 +178,8 @@ def filterObjs(GET):
 		objs = objs.filter(status = GET['status'])
 	if ('flag' in GET):
 		objs = objs.filter(flagged = GET['flag'])
-	if ('source' in GET):
-		objs = objs.filter(source = GET['source'])
-	if ('check' in GET):
-		objs = objs.filter(check = GET['check'])
+	if ('reason' in GET):
+		objs = objs.filter(reason = GET['reason'])
 	if 'limit' in GET:
 		objs = objs[:int(GET['limit'])]
 
@@ -211,7 +214,7 @@ class IndexView(generic.ListView):
 class EditForm(ModelForm):
 	class Meta:
 		model = Result
-		fields = ['bug_id', 'flagged', 'source', 'check']
+		fields = ['bug_id', 'flagged']
 
 def edit(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)
