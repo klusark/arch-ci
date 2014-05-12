@@ -11,6 +11,8 @@ class Result(models.Model):
 	arch = models.CharField(max_length=200)
 	check = models.BooleanField(default=False)
 	source = models.BooleanField(default=False)
+	def __str__(self):
+		return self.package
 
 class Build(models.Model):
 	package = models.ForeignKey('Result')
@@ -24,5 +26,7 @@ class Repo(models.Model):
 	bugs_project = models.SmallIntegerField(default=1)
 	bugs_category = models.SmallIntegerField(default=2)
 	svn_path = models.CharField(max_length=64)
+	def __str__(self):
+		return self.name
 
 

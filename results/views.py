@@ -73,7 +73,8 @@ def add(request):
 	try:
 		r = Result.objects.get(package=package, repo__name=repo)
 	except Result.DoesNotExist:
-		r = Result(package=package, repo=repo)
+		rep = Repo.objects.get(name=repo)
+		r = Result(package=package, repo=rep)
 		r.status = -1
 		r.save()
 
@@ -126,10 +127,15 @@ def loadBug(request, repo, package):
 
 
 def buildPackage(repo, package):
+	rl = Result.objects.filter(package=package, repo__name=repo)
+	rl = rl.annotate(a=Avg('build__length'))
+	r = rl[0];
 	data = {}
 	data['PACKAGE'] = package
 	data['REPO'] = repo
 	data['token'] = "BUILDTOKEN"
+	#if (r.a > 600):
+	#	data['NODE'] = 'build1'
 	d = urllib.parse.urlencode(data).encode('UTF-8')
 	headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
 	response = urllib.request.urlopen("http://127.0.0.1:8090/job/package/buildWithParameters", d)
@@ -151,6 +157,12 @@ def filterObjs(GET):
 
 	if 'avg' in GET:
 		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=1).order_by("a")
+	if 'avg2' in GET:
+		objs = objs.annotate(a=Avg('build__length')).filter(a__lte=600)
+	if 'avg3' in GET:
+		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=600)
+	if 'noavg' in GET:
+		objs = objs.annotate(a=Avg('build__length')).filter(a=None)
 	if ('repo' in GET):
 		objs = objs.filter(repo__name = GET['repo'])
 	if ('bug_id' in GET):
@@ -221,11 +233,10 @@ def PackageView(request, repo, package):
 
 def download(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)
-	dir = "/var/abs/"+r.repo.name+"/"+package+"/"
-	dir2 = "/var/git/%s/%s/trunk/" % (r.repo.svn_path, package)
+	dir = "/var/git/%s/%s/trunk/" % (r.repo.svn_path, package)
 
-	if os.path.exists(dir2):
-		dir = dir2
+	if not os.path.exists(dir):
+		return HttpResponse("could not find package")
 
 	s = io.BytesIO()
 	zf = zipfile.ZipFile(s, "w")
