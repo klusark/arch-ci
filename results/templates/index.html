@@ -37,15 +37,15 @@
     {% for r in results %}
 		<tr>
 		<td>{{r.repo.name}}</td>
-        <td><a href="/results/{{ r.repo.name }}/{{r.package}}/">{{ r.package }}</a></td>
+        <td><a href="{% url 'package' r.repo.name r.package %}">{{ r.package }}</a></td>
 		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status}}</span></td>
 		<td>{{r.bug_id | link_bug}}</td>
-		<td><a href="http://162.243.149.218:8090/job/package/{{r.jenkins_id}}/console">Jenkins</a></td>
-		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load/">Load Flag</a></td>
-		<td><a href="/results/{{ r.repo.name }}/{{r.package}}/load_bug/">Load Bug</a></td>
+		<td><a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a></td>
+		<td><a href="{% url 'load_flag' r.repo.name r.package %}">Load Flag</a></td>
+		<td><a href="{% url 'load_bug' r.repo.name r.package %}">Load Bug</a></td>
 		<td><a href="https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
 		<td><a href="https://www.archlinux.org/packages/{{r.repo.name}}/x86_64/{{r.package}}">Arch PKG</a></td>
-		<td><a href="/results/{{r.repo.name}}/{{r.package}}/rebuild/">Rebuild</a></td>
+		<td><a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a></td>
 		</tr>
     {% endfor %}
     </table>

@@ -12,7 +12,9 @@ import zipfile
 import os
 import io
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.urlresolvers import reverse
 from results.models import Result, Build, Repo
+from results.tags import JenkinsURL
 from django.db.models import Avg
 from django.template.loader import add_to_builtins
 from datetime import datetime
@@ -87,7 +89,7 @@ def detect(request, repo, package):
 	return HttpResponse("")
 
 def detectFailure(r):
-	response = urllib.request.urlopen("http://162.243.149.218:8090/job/package/"+str(r.jenkins_id)+"/consoleText")
+	response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
 	res = response.read().decode("utf-8")
 	if (res.find("A failure occurred in check") != -1):
 		r.reason = 1
@@ -95,6 +97,8 @@ def detectFailure(r):
 	#	r.build = True
 	if (res.find("Could not download sources") != -1):
 		r.reason = 2
+	if (res.find("failed to install missing dependencies") != -1):
+		r.reason = 3
 	r.save()
 
 
@@ -147,7 +151,7 @@ def buildPackage(repo, package):
 
 def rebuild(request, repo, package):
 	buildPackage(repo, package)
-	return HttpResponseRedirect('/results/' + repo +"/" + package);
+	return HttpResponseRedirect(reverse('package', args=(repo, package,)))
 
 def rebuildFailed(request):
 	objs = filterObjs(request.GET)
@@ -222,7 +226,7 @@ def edit(request, repo, package):
 		form = EditForm(request.POST, instance=r)
 		if form.is_valid():
 			form.save()
-			return HttpResponseRedirect('/results/' + r.repo.name +"/" + package);
+			return HttpResponseRedirect(reverse('package', args=(repo, package,)))
 	else:
 		form = EditForm(instance=r)
 	return render(request, 'edit.html', {'r': r, 'form': form})

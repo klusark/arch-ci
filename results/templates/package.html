@@ -1,8 +1,8 @@
-<a href="http://162.243.149.218:8090/job/package/{{r.jenkins_id}}/console">Jenkins</a><br>
-<a href="/results/{{r.repo.name}}/{{r.package}}/rebuild/">Rebuild</a><br>
+<a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a><br>
+<a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a><br>
 <a href="https://bugs.archlinux.org/?project=1&cat%5B%5D=2&string={{r.package}}">Bug Reports</a><br>
-<a href="/results/{{r.repo.name}}/{{r.package}}/edit/">Edit</a><br>
-<a href="/results/{{r.repo.name}}/{{r.package}}/load/">Load</a><br>
+<a href="{% url 'edit' r.repo.name r.package %}">Edit</a><br>
+<a href="{% url 'load_bug' r.repo.name r.package %}">Load</a><br>
 <a href="https://www.archlinux.org/packages/{{r.repo.name}}/{% if a.arch %}{{r.arch}} {% else %}x86_64{%endif%}/{{r.package}}/">Arch Package</a><br>
 Build status: {{ r.status }} <br>
 Bug ID: {{ r.bug_id | link_bug}}<br>
