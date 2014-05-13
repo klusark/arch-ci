@@ -129,6 +129,8 @@ def loadBug(request, repo, package):
 	res = response.read().decode("utf-8")
 	m = re.search('/task/([0-9]+)', res)
 	if m == None:
+		r.bug_id = 0
+		r.save()
 		return HttpResponse("no bug")
 	r.bug_id = int(m.group(0)[6:])
 	r.save()
