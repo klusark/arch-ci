@@ -276,10 +276,13 @@ def edit(request, repo, package):
 
 def PackageView(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)
+	b = Build.objects.all()
+	b = b.filter(package = r)
+	b = b.order_by("id")
 	build = Build.objects.all()
 	build = build.filter(package=r)
 	l = build.aggregate(Avg('length'))
-	return render(request, 'package.html', {'r': r, 'avg': l['length__avg']})
+	return render(request, 'package.html', {'r': r, 'builds': b, 'avg': l['length__avg']})
 
 def download(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)

@@ -6,4 +6,11 @@
 <a href="https://www.archlinux.org/packages/{{r.repo.name}}/{% if a.arch %}{{r.arch}} {% else %}x86_64{%endif%}/{{r.package}}/">Arch Package</a><br>
 Build status: {{ r.status }} <br>
 Bug ID: {{ r.bug_id | link_bug}}<br>
-Average Build Time: {{avg}}
+Average Build Time: {{avg}}<br>
+
+<table>
+<tr><th>Length</th><th>Date</th><th>ID</th><th>Status</th</tr>
+{% for b in builds %}
+<tr><td>{{b.length}}</td><td>{{b.time}}</td><td>{{b.jenkins_id}}</td><td>{{b.status}}</td></tr>
+{% endfor %}
+</table>
