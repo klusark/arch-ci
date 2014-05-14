@@ -14,6 +14,15 @@
             <div>{{ search_form.flagged.errors }}
                 <label for="id_flagged" title="Limit results based on out-of-date status">
                     Flagged</label>{{ search_form.flagged }}</div>
+            <div>{{ search_form.status.errors }}
+                <label for="id_status" title="Limit results based on build status">
+                    Status</label>{{ search_form.status }}</div>
+            <div>{{ search_form.reason.errors }}
+                <label for="id_reason" title="Limit results based on build failure reason">
+                    Reason</label>{{ search_form.reason }}</div>
+            <div>{{ search_form.bug.errors }}
+                <label for="id_bug" title="Limit results based on bugs">
+                    Bug Report</label>{{ search_form.bug }}</div>
             <div ><label>&nbsp;</label><input title="Search for packages using this criteria"
                 type="submit" value="Search" /></div>
         </fieldset>

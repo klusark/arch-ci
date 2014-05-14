@@ -14,7 +14,7 @@ package_patterns = patterns('',
 )
 
 urlpatterns = patterns('',
-	url(r'^rebuild_failed/$', views.rebuildFailed),
+	url(r'^rebuild/$', views.rebuildFailed),
 	url(r'^add/$', views.add),
 	url(r'^submit/$', views.submit),
 	url(r'^(?P<repo>\w+)/(?P<package>[^ /]+)/', include(package_patterns)),

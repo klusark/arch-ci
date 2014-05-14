@@ -36,12 +36,23 @@ class PackageSearchForm(forms.Form):
 	flagged = forms.ChoiceField(
 		choices=[('', 'All')] + make_choice(['Flagged', 'Not Flagged']),
 		required=False)
+	status = forms.ChoiceField(
+		choices=[('', 'All')] + make_choice(['Success', 'Failure', 'In progress', 'Removed']),
+		required=False)
+	reason = forms.ChoiceField(
+		choices=[('', 'All')] + make_choice(['General', 'Check', 'Source', 'Depends']),
+		required=False)
+	bug = forms.ChoiceField(
+		choices=[('', 'All')] + make_choice(['Yes', 'No']),
+		required=False)
+	page = forms.CharField(required=False)
+	limit = forms.IntegerField(required=False)
+	avg = forms.IntegerField(required=False)
 
 	def __init__(self, *args, **kwargs):
 		super(PackageSearchForm, self).__init__(*args, **kwargs)
 		repos = Repo.objects.all()
-		self.fields['repo'].choices = make_choice(
-		[repo.name for repo in repos])
+		self.fields['repo'].choices = make_choice([repo.name for repo in repos])
 
 @csrf_exempt
 def submit(request):
@@ -56,6 +67,7 @@ def submit(request):
 	r.jenkins_id = jenkins_id
 	r.status = status
 	r.last_built = datetime.now()
+	r.reason = 0
 	if int(status) != 0:
 		detectFailure(r)
 	r.save()
@@ -92,15 +104,15 @@ def detectFailure(r):
 	response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
 	res = response.read().decode("utf-8")
 	if (res.find("A failure occurred in check") != -1):
-		r.reason = 1
-	#if (res.find("A failure occurred in build") != -1):
-	#	r.build = True
-	if (res.find("Could not download sources") != -1):
 		r.reason = 2
-	if (res.find("failed to install missing dependencies") != -1):
+	elif (res.find("Could not download sources") != -1):
 		r.reason = 3
-	if (res.find("End-of-central-directory signature not found") != -1):
+	elif (res.find("failed to install missing dependencies") != -1):
 		r.reason = 4
+	elif (res.find("End-of-central-directory signature not found") != -1):
+		r.reason = 5
+	else:
+		r.reason = 1
 	r.save()
 
 
@@ -158,41 +170,64 @@ def rebuild(request, repo, package):
 	return HttpResponseRedirect(reverse('package', args=(repo, package,)))
 
 def rebuildFailed(request):
-	objs = filterObjs(request.GET)
-	for r in objs:
-		buildPackage(r.repo.name, r.package)
-	return HttpResponse("OK\n");
+	form = PackageSearchForm(data=request.GET)
+	if form.is_valid():
+		objs = filterObjs(form)
+		for r in objs:
+			buildPackage(r.repo.name, r.package)
+		return HttpResponse("OK\n");
+	return HttpResponse("You messed up the form\n");
 
-def filterObjs(GET):
+def filterObjs(form):
 	objs = Result.objects.all();
-	if ('order_by' in GET):
-		objs = objs.order_by(GET['order_by'])
+	if form.cleaned_data['flagged'] == 'Flagged':
+		objs = objs.filter(flagged = 1)
+	elif form.cleaned_data['flagged'] == 'Not Flagged':
+		objs = objs.filter(flagged = 0)
 
-	if 'avg' in GET:
-		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=1).order_by("a")
-	if 'avg2' in GET:
-		objs = objs.annotate(a=Avg('build__length')).filter(a__lte=600)
-	if 'avg3' in GET:
-		objs = objs.annotate(a=Avg('build__length')).filter(a__gte=600)
-	if 'noavg' in GET:
-		objs = objs.annotate(a=Avg('build__length')).filter(a=None)
-	if ('repo' in GET):
-		objs = objs.filter(repo__name = GET['repo'])
-	if ('bug_id' in GET):
-		objs = objs.filter(bug_id = GET['bug_id'])
-	if ('package' in GET):
-		objs = objs.filter(package = GET['package'])
-	if ('status' in GET):
-		objs = objs.filter(status = GET['status'])
-	if ('flag' in GET):
-		objs = objs.filter(flagged = GET['flag'])
-	if ('reason' in GET):
-		objs = objs.filter(reason = GET['reason'])
-	if 'limit' in GET:
-		objs = objs[:int(GET['limit'])]
+	if form.cleaned_data['repo']:
+		objs = objs.filter(repo__name__in=form.cleaned_data['repo'])
+
+	if form.cleaned_data['status'] == 'Success':
+		objs = objs.filter(status = 0)
+	elif form.cleaned_data['status'] == 'Failure':
+		objs = objs.filter(status = 1)
+	elif form.cleaned_data['status'] == 'In progress':
+		objs = objs.filter(status = 2)
+	elif form.cleaned_data['status'] == 'Removed':
+		objs = objs.filter(status = 3)
+
+	if form.cleaned_data['bug'] == 'Yes':
+		objs = objs.filter(bug_id__gt = 0)
+	elif form.cleaned_data['bug'] == 'No':
+		objs = objs.filter(bug_id = 0)
+
+	if form.cleaned_data['reason'] == 'General':
+		objs = objs.filter(reason = 1)
+	elif form.cleaned_data['reason'] == 'Check':
+		objs = objs.filter(reason = 2)
+	elif form.cleaned_data['reason'] == 'Source':
+		objs = objs.filter(reason = 3)
+	elif form.cleaned_data['reason'] == 'Depends':
+		objs = objs.filter(reason = 4)
+
+	if form.cleaned_data['avg'] != None:
+		objs = objs.annotate(a=Avg('build__length')).filter(a__lte=int(form.cleaned_data['avg']))
+
+	sort = form.cleaned_data['sort']
+	sort_fields = ['last_built']
+	allowed_sort = list(sort_fields) + ["-" + s for s in sort_fields]
+	if sort in allowed_sort:
+		objs = objs.order_by(sort)
+	else:
+		objs = objs.order_by('package')
+
+	if form.cleaned_data['limit'] != None:
+		objs = objs[:int(form.cleaned_data['limit'])]
+
 
 	paginator = Paginator(objs, 50)
-	page = GET.get('page')
+	page = form.cleaned_data['page']
 	try:
 		objs = paginator.page(page)
 	except PageNotAnInteger:
@@ -207,12 +242,13 @@ class IndexView(generic.ListView):
 	context_object_name = 'results'
 
 	def get(self, request, *args, **kwargs):
-		self.form = PackageSearchForm()
+		self.form = PackageSearchForm(data=request.GET)
 		return super(IndexView, self).get(request, *args, **kwargs)
 
 	def get_queryset(self):
-
-		return filterObjs(self.request.GET)
+		if self.form.is_valid():
+			return filterObjs(self.form)
+		return Result.objects.none()
 
 	def get_context_data(self, **kwargs):
 		context = super(IndexView, self).get_context_data(**kwargs)
