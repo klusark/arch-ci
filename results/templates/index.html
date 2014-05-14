@@ -47,7 +47,7 @@
 		<tr>
 		<td>{{r.repo.name}}</td>
         <td><a href="{% url 'package' r.repo.name r.package %}">{{ r.package }}</a></td>
-		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status}}</span></td>
+		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status | status}}</span></td>
 		<td>{{r.bug_id | link_bug}}</td>
 		<td><a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a></td>
 		<td><a href="{% url 'load_flag' r.repo.name r.package %}">Load Flag</a></td>
