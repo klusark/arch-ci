@@ -59,7 +59,7 @@ def submit(request):
 	if int(status) != 0:
 		detectFailure(r)
 	r.save()
-	if int(status) != 2:
+	if int(status) < 2:
 		b = Build()
 		b.package = r
 		b.length = request.POST['time'];
@@ -99,6 +99,8 @@ def detectFailure(r):
 		r.reason = 2
 	if (res.find("failed to install missing dependencies") != -1):
 		r.reason = 3
+	if (res.find("End-of-central-directory signature not found") != -1):
+		r.reason = 4
 	r.save()
 
 
@@ -214,6 +216,9 @@ class IndexView(generic.ListView):
 
 	def get_context_data(self, **kwargs):
 		context = super(IndexView, self).get_context_data(**kwargs)
+		query_params = self.request.GET.copy()
+		query_params.pop('page', None)
+		context['current_query'] = query_params.urlencode()
 		context['search_form'] = self.form
 		return context
 

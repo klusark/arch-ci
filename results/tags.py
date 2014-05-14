@@ -9,6 +9,6 @@ def albug(value):
 register.filter('link_bug', albug)
 
 def JenkinsURL(value):
-	return "http://jenkins.arch-ci.org/job/package/%d" % value;
+	return "http://jenkins.arch-ci.org/job/package/%d" % int(value);
 register.filter('jenkins_url', JenkinsURL)
 
