@@ -57,6 +57,8 @@ class PackageSearchForm(forms.Form):
 
 @csrf_exempt
 def submit(request):
+	if get_client_ip(request) != "198.217.117.133":
+		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	jenkins_id = request.POST['jenkins_id']
@@ -79,10 +81,12 @@ def submit(request):
 		b.jenkins_id = request.POST['jenkins_id']
 		b.status = status
 		b.save()
-	return HttpResponse("")
+	return HttpResponse("OK\n")
 
 @csrf_exempt
 def add(request):
+	if get_client_ip(request) != "162.243.149.218":
+		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	try:
@@ -93,7 +97,7 @@ def add(request):
 		r.status = -1
 		r.save()
 
-	return HttpResponse("")
+	return HttpResponse("OK")
 
 def detect(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)
@@ -168,13 +172,23 @@ def rebuild(request, repo, package):
 	buildPackage(repo, package)
 	return HttpResponseRedirect(reverse('package', args=(repo, package,)))
 
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
 def rebuildFailed(request):
+	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
+		return HttpResponse("NO AUTH\n");
 	form = PackageSearchForm(data=request.GET)
 	if form.is_valid():
 		objs = filterObjs(form)
 		for r in objs:
 			buildPackage(r.repo.name, r.package)
-		return HttpResponse("OK\n");
+		return HttpResponse(" OK\n");
 	return HttpResponse("You messed up the form\n");
 
 def filterObjs(form):
@@ -267,6 +281,7 @@ class EditForm(ModelForm):
 		model = Result
 		fields = ['bug_id', 'flagged']
 
+@login_required()
 def edit(request, repo, package):
 	r = Result.objects.get(package=package, repo__name=repo)
 	if (request.method == 'POST'):
@@ -320,6 +335,7 @@ def processJSON(data):
 	except Result.DoesNotExist:
 		return
 
+@login_required()
 def loadJSON(request):
 	response = urllib.request.urlopen("https://www.archlinux.org/packages/search/json/?arch=any&arch=x86_64&repo=Community&repo=Core&repo=Extra&flagged=Flagged")
 	res = response.read().decode("utf-8")
