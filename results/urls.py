@@ -21,3 +21,10 @@ urlpatterns = patterns('',
 	url(r'^(?P<repo>\w+)/(?P<package>[^ /]+)/', include(package_patterns)),
 	url(r'^$', views.IndexView.as_view(), name='index'),
 )
+
+urlpatterns += patterns('django.contrib.auth.views',
+	(r'^login/$',           'login',  {
+		'template_name': 'login.html'}),
+	(r'^logout/$',          'logout', {
+		'template_name': 'logout.html'}),
+)

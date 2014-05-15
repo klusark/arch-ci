@@ -1,0 +1,7 @@
+<form method="post">{% csrf_token %}
+	<fieldset>
+		<legend>Enter login credentials</legend>
+		{{ form.as_p }}
+		<p><label></label> <input type="submit" value="Login" /></p>
+	</fieldset>
+</form>
