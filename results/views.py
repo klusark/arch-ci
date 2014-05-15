@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.views import generic
 from django import forms
 import json
@@ -37,7 +38,7 @@ class PackageSearchForm(forms.Form):
 		choices=[('', 'All')] + make_choice(['Flagged', 'Not Flagged']),
 		required=False)
 	status = forms.ChoiceField(
-		choices=[('', 'All')] + make_choice(['Success', 'Failure', 'In progress', 'Removed']),
+		choices=[('', 'All')] + make_choice(['Success', 'Failure', 'In progress', 'Removed', 'Unbuilt']),
 		required=False)
 	reason = forms.ChoiceField(
 		choices=[('', 'All')] + make_choice(['General', 'Check', 'Source', 'Depends']),
@@ -125,13 +126,10 @@ def load(request, repo, package):
 		response = urllib.request.urlopen("https://www.archlinux.org/packages/"+r.repo.name+"/"+"any"+"/"+r.package+"/json/")
 	res = response.read().decode("utf-8")
 	data = json.loads(res)
+	processJSON(data)
 	if data['flag_date'] != None:
-		r.flagged = True
-		r.save()
 		return HttpResponse('flag')
 	else:
-		r.flagged = False
-		r.save()
 		return HttpResponse('no flag')
 
 def loadBug(request, repo, package):
@@ -159,12 +157,13 @@ def buildPackage(repo, package):
 	data['PACKAGE'] = package
 	data['REPO'] = repo
 	data['token'] = "BUILDTOKEN"
-	#if (r.a > 600):
-	#	data['NODE'] = 'build1'
+	if (r.a > 300):
+		data['NODE'] = 'build1'
 	d = urllib.parse.urlencode(data).encode('UTF-8')
 	headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
 	response = urllib.request.urlopen("http://127.0.0.1:8090/job/package/buildWithParameters", d)
 
+@login_required()
 def rebuild(request, repo, package):
 	buildPackage(repo, package)
 	return HttpResponseRedirect(reverse('package', args=(repo, package,)))
@@ -196,6 +195,8 @@ def filterObjs(form):
 		objs = objs.filter(status = 2)
 	elif form.cleaned_data['status'] == 'Removed':
 		objs = objs.filter(status = 3)
+	elif form.cleaned_data['status'] == 'Unbuilt':
+		objs = objs.filter(status = -1)
 
 	if form.cleaned_data['bug'] == 'Yes':
 		objs = objs.filter(bug_id__gt = 0)
@@ -213,6 +214,9 @@ def filterObjs(form):
 
 	if form.cleaned_data['avg'] != None:
 		objs = objs.annotate(a=Avg('build__length')).filter(a__lte=int(form.cleaned_data['avg']))
+
+	if form.cleaned_data['q'] != None:
+		objs = objs.filter(package__icontains=form.cleaned_data['q']);
 
 	sort = form.cleaned_data['sort']
 	sort_fields = ['last_built']
@@ -304,3 +308,24 @@ def download(request, repo, package):
 	resp = HttpResponse(s.getvalue(), mimetype = "application/x-zip-compressed")
 	resp['Content-Disposition'] = 'attachment; filename=%s.zip' % package
 	return resp
+
+def processJSON(data):
+	try:
+		r = Result.objects.get(package=data["pkgname"], repo__name=data["repo"])
+		if data['flag_date'] != None:
+			r.flagged = True
+		else:
+			r.flagged = False
+		r.save()
+	except Result.DoesNotExist:
+		return
+
+def loadJSON(request):
+	response = urllib.request.urlopen("https://www.archlinux.org/packages/search/json/?arch=any&arch=x86_64&repo=Community&repo=Core&repo=Extra&flagged=Flagged")
+	res = response.read().decode("utf-8")
+	data = json.loads(res)
+
+	for result in data["results"]:
+		processJSON(result)
+
+	return HttpResponse("done")

@@ -17,6 +17,7 @@ urlpatterns = patterns('',
 	url(r'^rebuild/$', views.rebuildFailed),
 	url(r'^add/$', views.add),
 	url(r'^submit/$', views.submit),
+	url(r'^load_json/$', views.loadJSON),
 	url(r'^(?P<repo>\w+)/(?P<package>[^ /]+)/', include(package_patterns)),
 	url(r'^$', views.IndexView.as_view(), name='index'),
 )

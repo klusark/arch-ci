@@ -10,6 +10,7 @@ class Result(models.Model):
 	flagged = models.BooleanField(default=False)
 	arch = models.CharField(max_length=200)
 	reason = models.IntegerField(default=0)
+	maintainer = models.CharField(max_length=200, default='')
 	def __str__(self):
 		return self.package
 
