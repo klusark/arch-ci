@@ -41,14 +41,15 @@ class PackageSearchForm(forms.Form):
 		choices=[('', 'All')] + make_choice(['Success', 'Failure', 'In progress', 'Removed', 'Unbuilt']),
 		required=False)
 	reason = forms.ChoiceField(
-		choices=[('', 'All')] + make_choice(['General', 'Check', 'Source', 'Depends']),
+		choices=[('', 'All')] + make_choice(['General', 'Check', 'Source', 'Hash', 'Depends']),
 		required=False)
 	bug = forms.ChoiceField(
 		choices=[('', 'All')] + make_choice(['Yes', 'No']),
 		required=False)
 	page = forms.CharField(required=False)
 	limit = forms.IntegerField(required=False)
-	avg = forms.IntegerField(required=False)
+	avg_max = forms.IntegerField(required=False)
+	avg_min = forms.IntegerField(required=False)
 
 	def __init__(self, *args, **kwargs):
 		super(PackageSearchForm, self).__init__(*args, **kwargs)
@@ -74,7 +75,7 @@ def submit(request):
 	if int(status) != 0:
 		detectFailure(r)
 	r.save()
-	if int(status) < 2:
+	if int(status) != 2:
 		b = Build()
 		b.package = r
 		b.length = request.POST['time'];
@@ -110,6 +111,8 @@ def detectFailure(r):
 	res = response.read().decode("utf-8")
 	if (res.find("A failure occurred in check") != -1):
 		r.reason = 2
+	elif (res.find("One or more files did not pass the validity check!") != -1):
+		r.reason = 6
 	elif (res.find("Could not download sources") != -1):
 		r.reason = 3
 	elif (res.find("failed to install missing dependencies") != -1):
@@ -161,7 +164,7 @@ def buildPackage(repo, package):
 	data['PACKAGE'] = package
 	data['REPO'] = repo
 	data['token'] = "BUILDTOKEN"
-	if (r.a > 300):
+	if (r.a == None or r.a > 600):
 		data['NODE'] = 'build1'
 	d = urllib.parse.urlencode(data).encode('UTF-8')
 	headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
@@ -223,17 +226,23 @@ def filterObjs(form):
 		objs = objs.filter(reason = 2)
 	elif form.cleaned_data['reason'] == 'Source':
 		objs = objs.filter(reason = 3)
+	elif form.cleaned_data['reason'] == 'Hash':
+		objs = objs.filter(reason = 6)
 	elif form.cleaned_data['reason'] == 'Depends':
 		objs = objs.filter(reason = 4)
 
-	if form.cleaned_data['avg'] != None:
-		objs = objs.annotate(a=Avg('build__length')).filter(a__lte=int(form.cleaned_data['avg']))
+	objs = objs.annotate(avg=Avg('build__length'))
+	if form.cleaned_data['avg_max'] != None:
+		objs = objs.filter(avg__lte=int(form.cleaned_data['avg_max']))
+
+	if form.cleaned_data['avg_min'] != None:
+		objs = objs.filter(avg__gte=int(form.cleaned_data['avg_min']))
 
 	if form.cleaned_data['q'] != None:
 		objs = objs.filter(package__icontains=form.cleaned_data['q']);
 
 	sort = form.cleaned_data['sort']
-	sort_fields = ['last_built']
+	sort_fields = ['last_built', 'avg']
 	allowed_sort = list(sort_fields) + ["-" + s for s in sort_fields]
 	if sort in allowed_sort:
 		objs = objs.order_by(sort)
@@ -340,6 +349,11 @@ def loadJSON(request):
 	response = urllib.request.urlopen("https://www.archlinux.org/packages/search/json/?arch=any&arch=x86_64&repo=Community&repo=Core&repo=Extra&flagged=Flagged")
 	res = response.read().decode("utf-8")
 	data = json.loads(res)
+
+	objs = Result.objects.all()
+	for a in objs:
+		a.flagged = False
+		a.save()
 
 	for result in data["results"]:
 		processJSON(result)
