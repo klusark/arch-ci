@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
 <div id="pkglist-search" class="box filter-criteria">
 
     <form id="pkg-search" method="get" action="{% url 'index' %}">
@@ -76,3 +79,4 @@
 {% else %}
     <p>No packages.</p>
 {% endif %}
+{% endblock %}

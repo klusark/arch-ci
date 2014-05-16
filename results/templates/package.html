@@ -1,6 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+
 <a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a><br>
 <a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a><br>
-<a href="https://bugs.archlinux.org/?project=1&cat%5B%5D=2&string={{r.package}}">Bug Reports</a><br>
+<a href="https://bugs.archlinux.org/?project=1&amp;cat%5B%5D=2&amp;string={{r.package}}">Bug Reports</a><br>
 <a href="{% url 'edit' r.repo.name r.package %}">Edit</a><br>
 <a href="{% url 'load_bug' r.repo.name r.package %}">Load</a><br>
 <a href="https://www.archlinux.org/packages/{{r.repo.name}}/{% if a.arch %}{{r.arch}} {% else %}x86_64{%endif%}/{{r.package}}/">Arch Package</a><br>
@@ -9,7 +13,7 @@ Bug ID: {{ r.bug_id | link_bug}}<br>
 Average Build Time: {{avg}}<br>
 
 <table>
-<tr><th>Length</th><th>Date</th><th>ID</th><th>Status</th</tr>
+<tr><th>Length</th><th>Date</th><th>ID</th><th>Status</th></tr>
 {% for b in builds %}
 <tr>
 	<td>{{b.length}}</td>
@@ -17,3 +21,6 @@ Average Build Time: {{avg}}<br>
 	<td><a href="{{b.jenkins_id | jenkins_url}}/console">{{b.jenkins_id}}</a></td><td>{{b.status | status}}</td></tr>
 {% endfor %}
 </table>
+
+{% endblock %}
+

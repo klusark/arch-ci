@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
 <form method="post">{% csrf_token %}
 	<fieldset>
 		<legend>Enter login credentials</legend>
@@ -5,3 +8,4 @@
 		<p><label></label> <input type="submit" value="Login" /></p>
 	</fieldset>
 </form>
+{% endblock %}
