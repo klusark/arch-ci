@@ -1,5 +1,6 @@
 from django import template
 from django.utils.safestring import mark_safe
+from urllib.parse import urlencode, parse_qs
 
 register = template.Library()
 def albug(value):
@@ -26,3 +27,34 @@ def Status(value):
 		return "Unbuilt"
 	return value
 register.filter('status', Status)
+
+
+#these next two functions were taken directly from archweb
+class BuildQueryStringNode(template.Node):
+	def __init__(self, sortfield):
+		self.sortfield = sortfield
+		super(BuildQueryStringNode, self).__init__()
+
+	def render(self, context):
+		qs = parse_qs(context['current_query'])
+		if 'sort' in qs and self.sortfield in qs['sort']:
+			if self.sortfield.startswith('-'):
+				qs['sort'] = [self.sortfield[1:]]
+			else:
+				qs['sort'] = ['-' + self.sortfield]
+		else:
+			qs['sort'] = [self.sortfield]
+		return urlencode(qs, True).replace('&', '&amp;')
+
+@register.tag(name='buildsortqs')
+def do_buildsortqs(parser, token):
+	try:
+		tagname, sortfield = token.split_contents()
+	except ValueError:
+		raise template.TemplateSyntaxError(
+				"%r tag requires a single argument" % token)
+	if not (sortfield[0] == sortfield[-1] and sortfield[0] in ('"', "'")):
+		raise template.TemplateSyntaxError(
+				"%r tag's argument should be in quotes" % token)
+	return BuildQueryStringNode(sortfield[1:-1])
+

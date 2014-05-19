@@ -58,12 +58,14 @@ class PackageSearchForm(forms.Form):
 
 @csrf_exempt
 def submit(request):
-	if get_client_ip(request) != "198.217.117.133":
-		return HttpResponse("NO AUTH\n");
+#	if get_client_ip(request) != "198.217.117.133":
+#		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	jenkins_id = request.POST['jenkins_id']
-	status = request.POST['status']
+	status = int(request.POST['status'])
+	if status == 255:
+		status = 1
 	try:
 		r = Result.objects.get(package=package, repo__name=repo)
 	except Result.DoesNotExist:
@@ -81,13 +83,16 @@ def submit(request):
 		b.length = request.POST['time'];
 		b.jenkins_id = request.POST['jenkins_id']
 		b.status = status
+		b.reason = r.reason
+		#if 'size' in request.POST and request.POST['size'] != None and request.POST['size'] != "":
+		#	b.size = request.POST['size']
 		b.save()
 	return HttpResponse("OK\n")
 
 @csrf_exempt
 def add(request):
-	if get_client_ip(request) != "162.243.149.218":
-		return HttpResponse("NO AUTH\n");
+#	if get_client_ip(request) != "162.243.149.218":
+#		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	try:
@@ -164,8 +169,8 @@ def buildPackage(repo, package):
 	data['PACKAGE'] = package
 	data['REPO'] = repo
 	data['token'] = "BUILDTOKEN"
-	if (r.a == None or r.a > 600):
-		data['NODE'] = 'build1'
+	#if (r.a == None or r.a > 600):
+	#	data['NODE'] = 'build1'
 	d = urllib.parse.urlencode(data).encode('UTF-8')
 	headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
 	response = urllib.request.urlopen("http://127.0.0.1:8090/job/package/buildWithParameters", d)
@@ -242,18 +247,20 @@ def filterObjs(form):
 		objs = objs.filter(package__icontains=form.cleaned_data['q']);
 
 	sort = form.cleaned_data['sort']
-	sort_fields = ['last_built', 'avg']
+	sort_fields = ['last_built', 'avg', 'package']
 	allowed_sort = list(sort_fields) + ["-" + s for s in sort_fields]
 	if sort in allowed_sort:
 		objs = objs.order_by(sort)
 	else:
-		objs = objs.order_by('package')
+		objs = objs.order_by('-last_built')
 
+	limit = 50
 	if form.cleaned_data['limit'] != None:
-		objs = objs[:int(form.cleaned_data['limit'])]
+		#objs = objs[:int(form.cleaned_data['limit'])]
+		limit = int(form.cleaned_data['limit'])
 
 
-	paginator = Paginator(objs, 50)
+	paginator = Paginator(objs, limit)
 	page = form.cleaned_data['page']
 	try:
 		objs = paginator.page(page)
@@ -350,10 +357,7 @@ def loadJSON(request):
 	res = response.read().decode("utf-8")
 	data = json.loads(res)
 
-	objs = Result.objects.all()
-	for a in objs:
-		a.flagged = False
-		a.save()
+	objs = Result.objects.all().update(flagged=False)
 
 	for result in data["results"]:
 		processJSON(result)

@@ -20,6 +20,10 @@ class Build(models.Model):
 	time = models.DateTimeField(auto_now = True)
 	jenkins_id = models.IntegerField(default=0)
 	status = models.IntegerField(default=0)
+	reason = models.IntegerField(default=0)
+	data = models.IntegerField(default=0)
+	size = models.IntegerField(default=0)
+
 
 class Repo(models.Model):
 	name = models.CharField(max_length=200, unique=True)

@@ -13,12 +13,16 @@ Bug ID: {{ r.bug_id | link_bug}}<br>
 Average Build Time: {{avg}}<br>
 
 <table>
-<tr><th>Length</th><th>Date</th><th>ID</th><th>Status</th></tr>
+<tr><th>Length</th><th>Date</th><th>ID</th><th>Status</th><th>Data</th><th>Size</th></tr>
 {% for b in builds %}
 <tr>
 	<td>{{b.length}}</td>
 	<td>{{b.time}}</td>
-	<td><a href="{{b.jenkins_id | jenkins_url}}/console">{{b.jenkins_id}}</a></td><td>{{b.status | status}}</td></tr>
+	<td><a href="{{b.jenkins_id | jenkins_url}}/console">{{b.jenkins_id}}</a></td>
+	<td>{{b.status | status}}</td>
+	<td>{{b.data}}</td>
+	<td>{{b.size}}</td>
+</tr>
 {% endfor %}
 </table>
 
