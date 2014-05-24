@@ -1,24 +1,26 @@
-from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseRedirect
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from django.views import generic
-from django import forms
-import json
-import urllib.request
-import urllib.parse
-import urllib.error
-import re
-import zipfile
-import os
 import io
-from django.core.urlresolvers import reverse
-from results.models import Result, Build, Repo
-from results.tags import JenkinsURL
-from django.db.models import Avg
-from django.template.loader import add_to_builtins
+import json
+import os
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 from datetime import datetime
+
+from django import forms
+from django.contrib.auth.decorators import login_required
+from django.core.urlresolvers import reverse
+from django.db.models import Avg
 from django.forms import ModelForm
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
+from django.template.loader import add_to_builtins
+from django.views import generic
+from django.views.decorators.csrf import csrf_exempt
+
+from results.models import Build, Repo, Result
+from results.tags import JenkinsURL
 
 add_to_builtins('results.tags')
 
