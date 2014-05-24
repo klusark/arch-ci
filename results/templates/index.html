@@ -32,7 +32,7 @@
     </form>
 
 </div><!-- #pkglist-search -->
-{% if results %}
+{% if object_list %}
     <table>
 	<tr>
 	<th>Repo</th>
@@ -48,7 +48,7 @@
 	<th>Load Bug</th>
 {% endif %}
 	</tr>
-    {% for r in results %}
+    {% for r in object_list %}
 		<tr>
 		<td>{{r.repo.name}}</td>
         <td><a href="{% url 'package' r.repo.name r.package %}">{{ r.package }}</a></td>
@@ -65,21 +65,23 @@
 		</tr>
     {% endfor %}
     </table>
+{% if is_paginated %}
 <div class="pagination">
     <span class="step-links">
-        {% if results.has_previous %}
-            <a href="?page={{ results.previous_page_number }}&amp;{{current_query}}">previous</a>
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&amp;{{current_query}}">previous</a>
         {% endif %}
 
         <span class="current">
-            Page {{ results.number }} of {{ results.paginator.num_pages }}.
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
         </span>
 
-        {% if results.has_next %}
-            <a href="?page={{ results.next_page_number }}&amp;{{current_query}}">next</a>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&amp;{{current_query}}">next</a>
         {% endif %}
     </span>
 </div>
+{% endif %}
 {% else %}
     <p>No packages.</p>
 {% endif %}

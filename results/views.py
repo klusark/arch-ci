@@ -12,7 +12,6 @@ import re
 import zipfile
 import os
 import io
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from results.models import Result, Build, Repo
 from results.tags import JenkinsURL
@@ -50,6 +49,7 @@ class PackageSearchForm(forms.Form):
 	limit = forms.IntegerField(required=False)
 	avg_max = forms.IntegerField(required=False)
 	avg_min = forms.IntegerField(required=False)
+	new_fail = forms.IntegerField(required=False)
 
 	def __init__(self, *args, **kwargs):
 		super(PackageSearchForm, self).__init__(*args, **kwargs)
@@ -74,10 +74,15 @@ def submit(request):
 	r.status = status
 	r.last_built = datetime.now()
 	r.reason = 0
-	if int(status) != 0:
-		detectFailure(r)
+	r.new_fail = False
+	if r.status == 1:
+		builds = Build.objects.filter(package=r).order_by('-time')
+		if builds[0].status == 0:
+			r.new_fail = True
 	r.save()
-	if int(status) != 2:
+	if r.status != 0:
+		detectFailure(r)
+	if r.status != 2:
 		b = Build()
 		b.package = r
 		b.length = request.POST['time'];
@@ -189,8 +194,8 @@ def get_client_ip(request):
     return ip
 
 def rebuildFailed(request):
-	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
-		return HttpResponse("NO AUTH\n");
+#	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
+#		return HttpResponse("NO AUTH\n");
 	form = PackageSearchForm(data=request.GET)
 	if form.is_valid():
 		objs = filterObjs(form)
@@ -236,7 +241,9 @@ def filterObjs(form):
 	elif form.cleaned_data['reason'] == 'Depends':
 		objs = objs.filter(reason = 4)
 
-	objs = objs.annotate(avg=Avg('build__length'))
+	if form.cleaned_data['avg_max'] != None or form.cleaned_data['avg_min'] != None or form.cleaned_data['sort'] == 'avg'or form.cleaned_data['sort'] == '-avg':
+		objs = objs.annotate(avg=Avg('build__length'))
+
 	if form.cleaned_data['avg_max'] != None:
 		objs = objs.filter(avg__lte=int(form.cleaned_data['avg_max']))
 
@@ -246,6 +253,9 @@ def filterObjs(form):
 	if form.cleaned_data['q'] != None:
 		objs = objs.filter(package__icontains=form.cleaned_data['q']);
 
+	if form.cleaned_data['new_fail'] != None:
+		objs = objs.filter(new_fail=True)
+
 	sort = form.cleaned_data['sort']
 	sort_fields = ['last_built', 'avg', 'package']
 	allowed_sort = list(sort_fields) + ["-" + s for s in sort_fields]
@@ -254,26 +264,18 @@ def filterObjs(form):
 	else:
 		objs = objs.order_by('-last_built')
 
-	limit = 50
+	limit = 100
 	if form.cleaned_data['limit'] != None:
-		#objs = objs[:int(form.cleaned_data['limit'])]
+		objs = objs[:int(form.cleaned_data['limit'])]
 		limit = int(form.cleaned_data['limit'])
 
-
-	paginator = Paginator(objs, limit)
-	page = form.cleaned_data['page']
-	try:
-		objs = paginator.page(page)
-	except PageNotAnInteger:
-		objs = paginator.page(1)
-	except EmptyPage:
-		objs = paginator.page(paginator.num_pages)
 
 	return objs
 
 class IndexView(generic.ListView):
 	template_name = 'index.html'
-	context_object_name = 'results'
+
+	paginate_by = 50
 
 	def get(self, request, *args, **kwargs):
 		self.form = PackageSearchForm(data=request.GET)
