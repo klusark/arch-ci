@@ -14,7 +14,7 @@ from django.core.urlresolvers import reverse
 from django.db.models import Avg
 from django.forms import ModelForm
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import add_to_builtins
 from django.views import generic
 from django.views.decorators.csrf import csrf_exempt
@@ -195,7 +195,7 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
-def rebuildFailed(request):
+def rebuildList(request):
 #	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
 #		return HttpResponse("NO AUTH\n");
 	form = PackageSearchForm(data=request.GET)
@@ -299,11 +299,11 @@ class IndexView(generic.ListView):
 class EditForm(ModelForm):
 	class Meta:
 		model = Result
-		fields = ['bug_id', 'flagged']
+		fields = ['bug_id', 'flagged', 'reason']
 
 @login_required()
 def edit(request, repo, package):
-	r = Result.objects.get(package=package, repo__name=repo)
+	r = get_object_or_404(Result, package=package, repo__name=repo)
 	if (request.method == 'POST'):
 		form = EditForm(request.POST, instance=r)
 		if form.is_valid():
@@ -314,17 +314,13 @@ def edit(request, repo, package):
 	return render(request, 'edit.html', {'r': r, 'form': form})
 
 def PackageView(request, repo, package):
-	r = Result.objects.get(package=package, repo__name=repo)
-	b = Build.objects.all()
-	b = b.filter(package = r)
-	b = b.order_by("id")
-	build = Build.objects.all()
-	build = build.filter(package=r)
-	l = build.aggregate(Avg('length'))
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+	b = Build.objects.filter(package=r).order_by("id")
+	l = b.aggregate(Avg('length'))
 	return render(request, 'package.html', {'r': r, 'builds': b, 'avg': l['length__avg']})
 
 def download(request, repo, package):
-	r = Result.objects.get(package=package, repo__name=repo)
+	r = get_object_or_404(Result, package=package, repo__name=repo)
 	dir = "/var/git/%s/%s/trunk/" % (r.repo.svn_path, package)
 
 	if not os.path.exists(dir):

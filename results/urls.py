@@ -14,7 +14,7 @@ package_patterns = patterns('',
 )
 
 urlpatterns = patterns('',
-	url(r'^rebuild/$', views.rebuildFailed),
+	url(r'^rebuild/$', views.rebuildList),
 	url(r'^add/$', views.add),
 	url(r'^submit/$', views.submit),
 	url(r'^load_json/$', views.loadJSON),
