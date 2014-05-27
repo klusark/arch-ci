@@ -1,4 +1,11 @@
 from django.db import models
+from south.modelsinspector import add_introspection_rules
+
+add_introspection_rules([], ["^results\.models\.LogField"])
+
+class LogField(models.Field):
+	def db_type(self, connection):
+		return 'bytea'
 
 class Result(models.Model):
 	package = models.CharField(max_length=200, db_index=True)
@@ -24,6 +31,7 @@ class Build(models.Model):
 	reason = models.IntegerField(default=0)
 	data = models.IntegerField(default=0)
 	size = models.IntegerField(default=0)
+	log = LogField(null=True)
 
 
 class Repo(models.Model):

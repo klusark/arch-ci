@@ -3,10 +3,12 @@
 {% block content %}
 
 <a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a><br>
-<a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a><br>
 <a href="https://bugs.archlinux.org/?project=1&amp;cat%5B%5D=2&amp;string={{r.package}}">Bug Reports</a><br>
-<a href="{% url 'edit' r.repo.name r.package %}">Edit</a><br>
-<a href="{% url 'load_bug' r.repo.name r.package %}">Load</a><br>
+{% if user.is_authenticated %}
+	<a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a><br>
+	<a href="{% url 'edit' r.repo.name r.package %}">Edit</a><br>
+	<a href="{% url 'load_bug' r.repo.name r.package %}">Load</a><br>
+{% endif %}
 <a href="https://www.archlinux.org/packages/{{r.repo.name}}/{% if a.arch %}{{r.arch}} {% else %}x86_64{%endif%}/{{r.package}}/">Arch Package</a><br>
 Build status: {{ r.status | status }} <br>
 Bug ID: {{ r.bug_id | link_bug}}<br>

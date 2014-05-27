@@ -1,3 +1,4 @@
+import codecs
 import io
 import json
 import os
@@ -10,6 +11,7 @@ from datetime import datetime
 
 from django import forms
 from django.contrib.auth.decorators import login_required
+from django.core.files import File
 from django.core.urlresolvers import reverse
 from django.db.models import Avg
 from django.forms import ModelForm
@@ -60,8 +62,8 @@ class PackageSearchForm(forms.Form):
 
 @csrf_exempt
 def submit(request):
-#	if get_client_ip(request) != "198.217.117.133":
-#		return HttpResponse("NO AUTH\n");
+	if get_client_ip(request) != "172.31.13.2" and not request.user.is_authenticated():
+		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	jenkins_id = request.POST['jenkins_id']
@@ -91,6 +93,9 @@ def submit(request):
 		b.jenkins_id = request.POST['jenkins_id']
 		b.status = status
 		b.reason = r.reason
+		response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
+		res = response.read()
+		b.log = codecs.encode(res, 'bz2')
 		#if 'size' in request.POST and request.POST['size'] != None and request.POST['size'] != "":
 		#	b.size = request.POST['size']
 		b.save()
@@ -99,7 +104,7 @@ def submit(request):
 @csrf_exempt
 def add(request):
 #	if get_client_ip(request) != "162.243.149.218":
-#		return HttpResponse("NO AUTH\n");
+	return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	try:
@@ -117,6 +122,13 @@ def detect(request, repo, package):
 	detectFailure(r)
 
 	return HttpResponse("")
+
+def GetLog(request, repo, package):
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+
+	b = Build.objects.filter(package=r).latest('time')
+
+	return HttpResponse("<pre>"+codecs.decode(b.log, 'bz2').decode('utf-8')+"</pre>")
 
 def detectFailure(r):
 	response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
@@ -196,18 +208,18 @@ def get_client_ip(request):
     return ip
 
 def rebuildList(request):
-#	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
-#		return HttpResponse("NO AUTH\n");
+	if get_client_ip(request) != "127.0.0.1" and not request.user.is_authenticated():
+		return HttpResponse("NO AUTH\n");
 	form = PackageSearchForm(data=request.GET)
 	if form.is_valid():
-		objs = filterObjs(form)
+		objs = Result.objects.all();
+		objs = filterObjs(form, objs)
 		for r in objs:
 			buildPackage(r.repo.name, r.package)
 		return HttpResponse(" OK\n");
 	return HttpResponse("You messed up the form\n");
 
-def filterObjs(form):
-	objs = Result.objects.all();
+def filterObjs(form, objs):
 	if form.cleaned_data['flagged'] == 'Flagged':
 		objs = objs.filter(flagged = 1)
 	elif form.cleaned_data['flagged'] == 'Not Flagged':
@@ -285,7 +297,8 @@ class IndexView(generic.ListView):
 
 	def get_queryset(self):
 		if self.form.is_valid():
-			return filterObjs(self.form)
+			packages = Result.objects.select_related()
+			return filterObjs(self.form, packages)
 		return Result.objects.none()
 
 	def get_context_data(self, **kwargs):

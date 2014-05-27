@@ -10,6 +10,7 @@ package_patterns = patterns('',
 	url(r'^rebuild/$', views.rebuild, name='rebuild'),
 	url(r'^download/$', views.download, name='download'),
 	url(r'^detect/$', views.detect, name='detect'),
+	url(r'^log/$', views.GetLog, name='log'),
 	url(r'^$', views.PackageView, name='package'),
 )
 
