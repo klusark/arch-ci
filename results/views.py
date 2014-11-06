@@ -123,12 +123,22 @@ def detect(request, repo, package):
 
 	return HttpResponse("")
 
+def outputLog(b):
+	return HttpResponse("<pre>"+codecs.decode(b.log,'bz2').decode('utf-8')[-1024:]+"</pre>")
+
+
 def GetLog(request, repo, package):
 	r = get_object_or_404(Result, package=package, repo__name=repo)
 
 	b = Build.objects.filter(package=r).latest('time')
 
-	return HttpResponse("<pre>"+codecs.decode(b.log, 'bz2').decode('utf-8')+"</pre>")
+	return outputLog(b)
+
+
+def GetSpecificLog(request, repo, package, build):
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+	b = get_object_or_404(Build, package=r, jenkins_id=build)
+	return outputLog(b)
 
 def detectFailure(r):
 	response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))

@@ -20,11 +20,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = 'h-71q27^28cn#g$$)$9p(-8+++^5gds@%1%7h2p2c-n)s2)2@x'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True 
 
-TEMPLATE_DEBUG = True
+TEMPLATE_DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['arch-ci.org']
 
 
 # Application definition
@@ -36,7 +36,9 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+	'south',
 	'results',
+#	'debug_toolbar',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -58,8 +60,11 @@ WSGI_APPLICATION = 'arch.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+		'NAME': 'db_arch',
+		'USER': 'db_arch',
+		'PASSWORD': 'db_arch',
+		'HOST': '',
     }
 }
 
@@ -81,3 +86,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+MEDIA_ROOT = '/mnt/disk2/arch/logs/'
+
+
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
