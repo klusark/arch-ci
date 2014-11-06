@@ -1,0 +1,122 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>1000</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>PACKAGE</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition plugin="nodelabelparameter@1.5.1">
+          <name>NODE</name>
+          <description></description>
+          <allowedSlaves>
+            <string>build1</string>
+            <string>build2</string>
+            <string>ec2-2</string>
+          </allowedSlaves>
+          <defaultSlaves>
+            <string>ec2-2</string>
+          </defaultSlaves>
+          <triggerIfResult>allowMultiSelectionForConcurrentBuilds</triggerIfResult>
+          <allowMultiNodeSelection>true</allowMultiNodeSelection>
+          <triggerConcurrentBuilds>true</triggerConcurrentBuilds>
+          <ignoreOfflineNodes>false</ignoreOfflineNodes>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <quietPeriod>0</quietPeriod>
+  <assignedNode>builders</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>BUILDTOKEN</authToken>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/usr/bin/bash
+
+source /etc/profile
+rm -rf *
+
+
+curl --data &quot;package=${PACKAGE//+/%2b}&amp;repo=${REPO}&amp;jenkins_id=$BUILD_NUMBER&amp;status=2&quot; http://arch-ci.org/submit/
+
+wget http://arch-ci.org/$REPO/${PACKAGE//+/%2b}/download/ -O ${PACKAGE}.zip
+unzip ${PACKAGE}.zip
+
+if [ $? -ne 0 ]
+then
+    curl --data &quot;package=${PACKAGE//+/%2b}&amp;repo=${REPO}&amp;jenkins_id=$BUILD_NUMBER&amp;status=3&amp;time=0&quot; http://arch-ci.org/submit/
+    exit 2
+fi
+
+START=`date +&quot;%s&quot; --utc`
+
+cd $PACKAGE || exit 2
+
+echo &quot;Start package&quot;
+
+CHROOT_PATH=/var/lib/archbuild/chroots/
+
+if [ &quot;$REPO&quot; = &quot;multilib&quot; ]
+then
+    CHROOT_PATH=/var/lib/archbuild/multilib/
+fi
+
+sudo /usr/bin/makechrootpkg -u -c -r $CHROOT_PATH -l $EXECUTOR_NUMBER
+
+STATUS=$?
+
+echo &quot;Status: $STATUS&quot;
+
+END=`date +&quot;%s&quot; --utc`
+
+TIME=`expr $END - $START`
+
+#scp *.pkg.tar* home.teichroeb.net:/home/jenkins/packages
+
+
+
+SIZE=$(ls -s *.pkg.tar | awk &apos;{print $1}&apos;)
+
+
+
+curl --data &quot;package=${PACKAGE//+/%2b}&amp;repo=${REPO}&amp;jenkins_id=$BUILD_NUMBER&amp;status=$STATUS&amp;time=$TIME&amp;size=$SIZE&quot; http://arch-ci.org/submit/
+
+
+
+exit $STATUS
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <org.jenkinsci.plugins.buildnamesetter.BuildNameSetter plugin="build-name-setter@1.3">
+      <template>${ENV,var=&quot;REPO&quot;}-${ENV,var=&quot;PACKAGE&quot;}</template>
+    </org.jenkinsci.plugins.buildnamesetter.BuildNameSetter>
+  </buildWrappers>
+</project>
