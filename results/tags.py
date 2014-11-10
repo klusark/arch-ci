@@ -28,6 +28,19 @@ def Status(value):
 	return value
 register.filter('status', Status)
 
+def Reason(value):
+	if value == 1:
+		return "General"
+	elif value == 2:
+		return "Check"
+	elif value == 3:
+		return "Source"
+	elif value == 4:
+		return "Depends"
+	elif value == 6:
+		return "Hash"
+	return value
+
 
 #these next two functions were taken directly from archweb
 class BuildQueryStringNode(template.Node):

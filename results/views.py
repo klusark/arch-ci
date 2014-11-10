@@ -20,9 +20,10 @@ from django.shortcuts import get_object_or_404, render
 from django.template.base import add_to_builtins
 from django.views import generic
 from django.views.decorators.csrf import csrf_exempt
+from django.core.serializers.json import DjangoJSONEncoder
 
 from results.models import Build, Repo, Result
-from results.tags import JenkinsURL
+from results.tags import JenkinsURL, Status, Reason
 
 add_to_builtins('results.tags')
 
@@ -210,12 +211,12 @@ def rebuild(request, repo, package):
 	return HttpResponseRedirect(reverse('package', args=(repo, package,)))
 
 def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+	x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+	if x_forwarded_for:
+		ip = x_forwarded_for.split(',')[0]
+	else:
+		ip = request.META.get('REMOTE_ADDR')
+	return ip
 
 def rebuildList(request):
 #	if get_client_ip(request) != "127.0.0.1" and not request.user.is_authenticated():
@@ -386,3 +387,46 @@ def loadJSON(request):
 		processJSON(result)
 
 	return HttpResponse("done")
+
+
+class PackageJSONEncoder(DjangoJSONEncoder):
+	pkg_attributes = ['package', 'last_built', 'status', 'reason']
+
+	def default(self, obj):
+		if hasattr(obj, '__iter__'):
+			# mainly for queryset serialization
+			return list(obj)
+		if isinstance(obj, Result):
+			data = {attr: getattr(obj, attr) for attr in self.pkg_attributes}
+			data['status'] = Status(data['status'])
+			data['reason'] = Reason(data['reason'])
+			return data
+		return super(PackageJSONEncoder, self).default(obj)
+
+def search_json(request):
+	limit = 250
+
+	container = {
+		'version': 2,
+		'limit': limit,
+		'valid': False,
+		'results': [],
+	}
+
+	if request.GET:
+		form = PackageSearchForm(data=request.GET)
+		if form.is_valid():
+			objs = Result.objects.all();
+			objs = filterObjs(form, objs)
+			container['results'] = objs
+			container['valid'] = True
+
+	to_json = json.dumps(container, ensure_ascii=False, cls=PackageJSONEncoder)
+	return HttpResponse(to_json, content_type='application/json')
+
+
+def pkg_json(request, repo, package):
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+
+	to_json = json.dumps(r, ensure_ascii=False, cls=PackageJSONEncoder)
+	return HttpResponse(to_json, content_type='application/json')
