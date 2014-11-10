@@ -1,3 +1,4 @@
+import codecs
 import io
 import json
 import os
@@ -10,12 +11,13 @@ from datetime import datetime
 
 from django import forms
 from django.contrib.auth.decorators import login_required
+from django.core.files import File
 from django.core.urlresolvers import reverse
 from django.db.models import Avg
 from django.forms import ModelForm
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
-from django.template.loader import add_to_builtins
+from django.template.base import add_to_builtins
 from django.views import generic
 from django.views.decorators.csrf import csrf_exempt
 
@@ -60,7 +62,7 @@ class PackageSearchForm(forms.Form):
 
 @csrf_exempt
 def submit(request):
-#	if get_client_ip(request) != "198.217.117.133":
+#	if get_client_ip(request) != "127.0.0.1" and not request.user.is_authenticated():
 #		return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
@@ -79,7 +81,7 @@ def submit(request):
 	r.new_fail = False
 	if r.status == 1:
 		builds = Build.objects.filter(package=r).order_by('-time')
-		if builds[0].status == 0:
+		if len(builds) and builds[0].status == 0:
 			r.new_fail = True
 	r.save()
 	if r.status != 0:
@@ -91,6 +93,9 @@ def submit(request):
 		b.jenkins_id = request.POST['jenkins_id']
 		b.status = status
 		b.reason = r.reason
+		response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
+		res = response.read()
+		b.log = codecs.encode(res, 'bz2')
 		#if 'size' in request.POST and request.POST['size'] != None and request.POST['size'] != "":
 		#	b.size = request.POST['size']
 		b.save()
@@ -99,7 +104,7 @@ def submit(request):
 @csrf_exempt
 def add(request):
 #	if get_client_ip(request) != "162.243.149.218":
-#		return HttpResponse("NO AUTH\n");
+#	return HttpResponse("NO AUTH\n");
 	package = request.POST['package']
 	repo = request.POST['repo']
 	try:
@@ -117,6 +122,23 @@ def detect(request, repo, package):
 	detectFailure(r)
 
 	return HttpResponse("")
+
+def outputLog(b):
+	return HttpResponse("<pre>"+codecs.decode(b.log,'bz2').decode('utf-8')+"</pre>")
+
+
+def GetLog(request, repo, package):
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+
+	b = Build.objects.filter(package=r).latest('time')
+
+	return outputLog(b)
+
+
+def GetSpecificLog(request, repo, package, build):
+	r = get_object_or_404(Result, package=package, repo__name=repo)
+	b = get_object_or_404(Build, package=r, jenkins_id=build)
+	return outputLog(b)
 
 def detectFailure(r):
 	response = urllib.request.urlopen("%s/consoleText" % JenkinsURL(r.jenkins_id))
@@ -196,18 +218,18 @@ def get_client_ip(request):
     return ip
 
 def rebuildList(request):
-#	if get_client_ip(request) != "162.243.149.218" and not request.user.is_authenticated():
+#	if get_client_ip(request) != "127.0.0.1" and not request.user.is_authenticated():
 #		return HttpResponse("NO AUTH\n");
 	form = PackageSearchForm(data=request.GET)
 	if form.is_valid():
-		objs = filterObjs(form)
+		objs = Result.objects.all();
+		objs = filterObjs(form, objs)
 		for r in objs:
 			buildPackage(r.repo.name, r.package)
 		return HttpResponse(" OK\n");
 	return HttpResponse("You messed up the form\n");
 
-def filterObjs(form):
-	objs = Result.objects.all();
+def filterObjs(form, objs):
 	if form.cleaned_data['flagged'] == 'Flagged':
 		objs = objs.filter(flagged = 1)
 	elif form.cleaned_data['flagged'] == 'Not Flagged':
@@ -259,7 +281,7 @@ def filterObjs(form):
 		objs = objs.filter(new_fail=True)
 
 	sort = form.cleaned_data['sort']
-	sort_fields = ['last_built', 'avg', 'package']
+	sort_fields = ['last_built', 'avg', 'package', 'repo']
 	allowed_sort = list(sort_fields) + ["-" + s for s in sort_fields]
 	if sort in allowed_sort:
 		objs = objs.order_by(sort)
@@ -285,7 +307,8 @@ class IndexView(generic.ListView):
 
 	def get_queryset(self):
 		if self.form.is_valid():
-			return filterObjs(self.form)
+			packages = Result.objects.select_related()
+			return filterObjs(self.form, packages)
 		return Result.objects.none()
 
 	def get_context_data(self, **kwargs):
@@ -336,7 +359,7 @@ def download(request, repo, package):
 			output += file
 
 	zf.close()
-	resp = HttpResponse(s.getvalue(), mimetype = "application/x-zip-compressed")
+	resp = HttpResponse(s.getvalue())
 	resp['Content-Disposition'] = 'attachment; filename=%s.zip' % package
 	return resp
 

@@ -39,7 +39,7 @@
 	<th><a href="?{% buildsortqs "package" %}" title="Sort packages by pacakge name">Name</a></th>
 	<th>Status</th>
 	<th>Bug ID</th>
-	<th>Jenkins</th>
+	<th>Log</th>
 	<th><a href="?{% buildsortqs "last_built" %}" title="Sort packages by last built">Last Built</a></th>
 	<th>Arch SVN</th>
 	<th>Arch PKG</th>
@@ -54,9 +54,9 @@
         <td><a href="{% url 'package' r.repo.name r.package %}">{{ r.package }}</a></td>
 		<td><span {% if r.flagged %}style="color:red"{% endif %}>{{r.status | status}}</span></td>
 		<td>{{r.bug_id | link_bug}}</td>
-		<td><a href="{{r.jenkins_id | jenkins_url}}/console">Jenkins</a></td>
+		<td><a href="{% url 'log' r.repo.name r.package %}">Log</a></td>
 		<td>{{r.last_built}}</td>
-		<td><a href="https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
+		<td><a href="https://projects.archlinux.org/svntogit/{{ r.repo.svn_path }}.git/log/trunk?h=packages/{{r.package}}">Arch SVN</a></td>
 		<td><a href="https://www.archlinux.org/packages/{{r.repo.name}}/x86_64/{{r.package}}">Arch PKG</a></td>
 {% if user.is_authenticated %}
 		<td><a href="{% url 'rebuild' r.repo.name r.package %}">Rebuild</a></td>
